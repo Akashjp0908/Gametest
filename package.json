@@ -1,5 +1,5 @@
 {
-  "name": "quiz-game",
+  "name": "futuristic-quiz-game",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,9 +13,10 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@types/react": "^18.2.43",
-    "@types/react-dom": "^18.2.17",
-    "@vitejs/plugin-react": "^4.2.1",
-    "vite": "^5.4.14"
+    "@supabase/supabase-js": "^2.48.1",
+    "@types/react": "^18.0.28",
+    "@types/react-dom": "^18.0.11",
+    "@vitejs/plugin-react": "^3.1.0",
+    "vite": "^4.5.9"
   }
 }

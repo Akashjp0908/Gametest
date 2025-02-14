@@ -1,136 +1,141 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import QuestionCard from './components/QuestionCard';
+import Timer from './components/Timer';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const questions = [
   {
-    questionText: 'What is the capital of France?',
-    answerOptions: [
-      { answerText: 'New York', isCorrect: false },
-      { answerText: 'London', isCorrect: false },
-      { answerText: 'Paris', isCorrect: true },
-      { answerText: 'Dublin', isCorrect: false },
-    ],
+    question: 'What is the capital of France?',
+    options: ['Paris', 'London', 'Berlin', 'Madrid'],
+    answer: 'Paris'
   },
   {
-    questionText: 'Who is CEO of Tesla?',
-    answerOptions: [
-      { answerText: 'Jeff Bezos', isCorrect: false },
-      { answerText: 'Elon Musk', isCorrect: true },
-      { answerText: 'Bill Gates', isCorrect: false },
-      { answerText: 'Tony Stark', isCorrect: false },
-    ],
+    question: 'What is the largest planet in our solar system?',
+    options: ['Earth', 'Mars', 'Jupiter', 'Saturn'],
+    answer: 'Jupiter'
   },
   {
-    questionText: 'The iPhone was created by which company?',
-    answerOptions: [
-      { answerText: 'Apple', isCorrect: true },
-      { answerText: 'Intel', isCorrect: false },
-      { answerText: 'Amazon', isCorrect: false },
-      { answerText: 'Microsoft', isCorrect: false },
-    ],
-  },
-  {
-    questionText: 'How many Harry Potter books are there?',
-    answerOptions: [
-      { answerText: '1', isCorrect: false },
-      { answerText: '4', isCorrect: false },
-      { answerText: '6', isCorrect: false },
-      { answerText: '7', isCorrect: true },
-    ],
-  },
+    question: 'What is the chemical symbol for gold?',
+    options: ['Fe', 'Au', 'Ag', 'Cu'],
+    answer: 'Au'
+  }
 ];
 
-function App() {
+const App = () => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [score, setScore] = useState(0);
   const [showScore, setShowScore] = useState(false);
   const [locationAllowed, setLocationAllowed] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Function to get the user's location
-    const getLocation = async () => {
-      setLoading(true);
-      if (navigator.geolocation) {
-        try {
-          const position = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject);
-          });
-
-          // Location access granted
-          setLocationAllowed(true);
-          setLoading(false);
-        } catch (error) {
-          console.error("Error getting location:", error);
-          setLocationAllowed(false);
-          setLoading(false);
-        }
-      } else {
-        console.error("Geolocation is not supported by this browser.");
-        setLocationAllowed(false);
-        setLoading(false);
-      }
-    };
-
-    getLocation();
-  }, []);
-
-  const handleAnswerOptionClick = (isCorrect) => {
-    if (isCorrect) {
+  const handleAnswer = (selectedOption) => {
+    if (selectedOption === questions[currentQuestion].answer) {
       setScore(score + 1);
+      playSound('correct');
+    } else {
+      playSound('incorrect');
     }
-
-    const nextQuestion = currentQuestion + 1;
-    if (nextQuestion < questions.length) {
-      setCurrentQuestion(nextQuestion);
+    if (currentQuestion + 1 < questions.length) {
+      setCurrentQuestion(currentQuestion + 1);
     } else {
       setShowScore(true);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="app">
-        <div className="loading-message">
-          Getting your location...
-        </div>
-      </div>
-    );
-  }
+  const playSound = (type) => {
+    const sound = new Audio(`/sounds/${type}.mp3`);
+    sound.play();
+  };
 
-  if (!locationAllowed) {
-    return (
-      <div className="app">
-        <div className="location-denied">
-          Location access is required to play this game. Please enable location services.
-        </div>
-      </div>
-    );
-  }
+  const requestLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          storeLocation(latitude, longitude);
+          setLocationAllowed(true);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          setLocationAllowed(false);
+        }
+      );
+    } else {
+      console.error('Geolocation is not supported by this browser.');
+      setLocationAllowed(false);
+    }
+  };
+
+  const storeLocation = async (latitude, longitude) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_locations')
+        .insert([{ latitude, longitude }]);
+      if (error) {
+        console.error('Error storing location:', error);
+      } else {
+        console.log('Location stored successfully:', data);
+      }
+    } catch (error) {
+      console.error('Error storing location:', error);
+    }
+  };
+
+  useEffect(() => {
+    requestLocation();
+  }, []);
+
+  useEffect(() => {
+    if (locationAllowed) {
+      const interval = setInterval(() => {
+        document.documentElement.style.setProperty('--bg-color1', getRandomColor());
+        document.documentElement.style.setProperty('--bg-color2', getRandomColor());
+      }, 3000);
+
+      return () => clearInterval(interval);
+    }
+  }, [locationAllowed]);
+
+  const getRandomColor = () => {
+    const colors = ['#00bfff', '#007bff', '#6610f2', '#6f42c1', '#e83e8c', '#e74c3c'];
+    return colors[Math.floor(Math.random() * colors.length)];
+  };
 
   return (
     <div className="app">
-      {showScore ? (
-        <div className="score-section">
-          You scored {score} out of {questions.length}
+      {locationAllowed ? (
+        <div className="quiz-container">
+          {showScore ? (
+            <div className="score-container">
+              <h1>Quiz Completed!</h1>
+              <p>Your score: {score} / {questions.length}</p>
+              <button onClick={() => window.location.reload()}>Play Again</button>
+            </div>
+          ) : (
+            <>
+              <Timer />
+              <QuestionCard
+                question={questions[currentQuestion].question}
+                options={questions[currentQuestion].options}
+                handleAnswer={handleAnswer}
+              />
+            </>
+          )}
         </div>
       ) : (
-        <>
-          <div className="question-section">
-            <div className="question-count">
-              <span>Question {currentQuestion + 1}</span>/{questions.length}
-            </div>
-            <div className="question-text">{questions[currentQuestion].questionText}</div>
-          </div>
-          <div className="answer-section">
-            {questions[currentQuestion].answerOptions.map((answerOption) => (
-              <button key={answerOption.answerText} onClick={() => handleAnswerOptionClick(answerOption.isCorrect)}>{answerOption.answerText}</button>
-            ))}
-          </div>
-        </>
+        <div className="location-container">
+          <h1>Allow Location to Start the Game</h1>
+          <p>Click the button below to allow location access and start the game.</p>
+          <button onClick={requestLocation}>Allow Location</button>
+          <button onClick={() => setLocationAllowed(true)}>Start Without Location</button>
+        </div>
       )}
     </div>
   );
-}
+};
 
 export default App;
